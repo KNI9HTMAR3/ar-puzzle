@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Playable Sliding Puzzle (AR.js)</title>
+    <title>Playable Sliding Puzzle (AR.js, Mobile-Friendly)</title>
 
     <!-- A-Frame Core -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
@@ -51,13 +51,14 @@
     <a-scene
       embedded
       arjs="sourceType: webcam; debugUIEnabled: false;"
-      cursor="rayOrigin: mouse"
+      cursor="rayOrigin: screen; fuse: false"
       raycaster="objects: .clickable"
     >
       <!-- Marker that hosts the puzzle -->
       <a-marker-camera preset="hiro">
-        <!-- Puzzle Entity -->
-        <a-entity id="puzzle" position="0 0 0">
+
+        <!-- Puzzle Entity (slightly in front of the marker) -->
+        <a-entity id="puzzle" position="0 0 0.01">
           <a-plane
             id="tile1"
             src="./assets/puzzle-images/tile1.jpg"
@@ -122,6 +123,7 @@
             height="0.3"
             class="clickable"
           ></a-plane>
+
           <!-- Empty Space -->
           <a-plane
             id="empty"
@@ -155,13 +157,15 @@
       // Copy of the above object to track changes
       let tilePositions = JSON.parse(JSON.stringify(initialPositions));
 
-      // Hook up click and hover events
+      // Hook up click (tap) + hover events
       Object.keys(tilePositions).forEach((tileId) => {
         if (tileId !== "empty") {
           const tile = document.getElementById(tileId);
+
+          // Primary click/tap
           tile.addEventListener("click", () => moveTile(tileId));
 
-          // Optional highlight on hover
+          // Optional highlight on hover (works in some browsers)
           tile.addEventListener("mouseenter", function () {
             const canMove = isAdjacentToEmpty(tileId);
             this.setAttribute("material", {
@@ -208,6 +212,7 @@
             dur: 200,
             easing: "easeInOutQuad",
           });
+
           // Animate the empty -> tile's old position
           empty.setAttribute("animation", {
             property: "position",
@@ -233,10 +238,7 @@
         });
 
         if (isSolved) {
-          setTimeout(
-            () => alert("Congratulations! You solved the puzzle!"),
-            300
-          );
+          setTimeout(() => alert("Congratulations! You solved the puzzle!"), 300);
         }
       }
 
@@ -259,7 +261,7 @@
 
           if (adjacentTiles.length === 0) {
             // If there's no adjacent tile other than the one we just moved,
-            // let that tile move back (this is a fallback).
+            // let that tile move back (fallback).
             const fallbackTiles = Object.keys(tilePositions).filter(
               (id) => id !== "empty" && isAdjacentToEmpty(id)
             );
