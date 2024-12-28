@@ -1,198 +1,307 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <!-- A-Frame + AR.js -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/jeromeetienne/ar.js/2.0.1/aframe/build/aframe-ar.min.js"></script>
+    <meta charset="utf-8" />
+    <title>Playable Sliding Puzzle (AR.js)</title>
+
+    <!-- A-Frame Core -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+    <!-- AR.js for A-Frame -->
+    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js@master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      .game-ui {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+
+      button {
+        background: #4caf50;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 0 5px;
+      }
+
+      button:hover {
+        background: #45a049;
+      }
+    </style>
   </head>
+
   <body style="margin: 0; overflow: hidden">
-    <!-- A-Frame / AR.js Scene -->
-    <a-scene embedded arjs="debugUIEnabled: true;">
-      <!-- Marker (Hiro pattern) -->
-      <a-marker preset="hiro">
-        <!-- Puzzle Frame -->
-        <a-entity id="puzzle" position="0 0 0" rotation="-90 0 0">
-          <!-- Puzzle Tiles (use class="clickable") -->
+    <!-- UI: Shuffle & Reset -->
+    <div class="game-ui">
+      <button onclick="shufflePuzzle(25)">Shuffle Puzzle</button>
+      <button onclick="resetPuzzle()">Reset Puzzle</button>
+    </div>
+
+    <!-- A-Frame Scene with AR.js -->
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      cursor="rayOrigin: mouse"
+      raycaster="objects: .clickable"
+    >
+      <!-- Marker that hosts the puzzle -->
+      <a-marker-camera preset="hiro">
+        <!-- Puzzle Entity -->
+        <a-entity id="puzzle" position="0 0 0">
           <a-plane
             id="tile1"
-            class="clickable"
             src="./assets/puzzle-images/tile1.jpg"
             position="-0.3 0.3 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile2"
-            class="clickable"
             src="./assets/puzzle-images/tile2.jpg"
             position="0 0.3 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile3"
-            class="clickable"
             src="./assets/puzzle-images/tile3.jpg"
             position="0.3 0.3 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile4"
-            class="clickable"
             src="./assets/puzzle-images/tile4.jpg"
             position="-0.3 0 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile5"
-            class="clickable"
             src="./assets/puzzle-images/tile5.jpg"
             position="0 0 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile6"
-            class="clickable"
             src="./assets/puzzle-images/tile6.jpg"
             position="0.3 0 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile7"
-            class="clickable"
             src="./assets/puzzle-images/tile7.jpg"
             position="-0.3 -0.3 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
           <a-plane
             id="tile8"
-            class="clickable"
             src="./assets/puzzle-images/tile8.jpg"
             position="0 -0.3 0"
             width="0.3"
             height="0.3"
+            class="clickable"
           ></a-plane>
-
-          <!-- Empty Space (no "clickable" class) -->
+          <!-- Empty Space -->
           <a-plane
             id="empty"
-            color="gray"
+            material="color: #333333; opacity: 0.0"
             position="0.3 -0.3 0"
             width="0.3"
             height="0.3"
           ></a-plane>
         </a-entity>
-      </a-marker>
-
-      <!-- Camera + Cursor (rayOrigin: mouse) -->
-      <a-entity camera>
-        <a-entity
-          id="cursor"
-          cursor="rayOrigin: mouse"
-          raycaster="objects: .clickable"
-          fuse="false"
-        ></a-entity>
-      </a-entity>
+      </a-marker-camera>
     </a-scene>
 
-    <!-- Puzzle Logic -->
     <script>
-      // Store initial positions for each tile and the empty space
-      const tilePositions = {
+      /* --------------------------------------
+         3x3 Sliding Puzzle Setup
+      -------------------------------------- */
+
+      // Correct/Initial positions
+      const initialPositions = {
         tile1: { x: -0.3, y: 0.3 },
-        tile2: { x: 0, y: 0.3 },
+        tile2: { x: 0.0, y: 0.3 },
         tile3: { x: 0.3, y: 0.3 },
-        tile4: { x: -0.3, y: 0 },
-        tile5: { x: 0, y: 0 },
-        tile6: { x: 0.3, y: 0 },
+        tile4: { x: -0.3, y: 0.0 },
+        tile5: { x: 0.0, y: 0.0 },
+        tile6: { x: 0.3, y: 0.0 },
         tile7: { x: -0.3, y: -0.3 },
-        tile8: { x: 0, y: -0.3 },
+        tile8: { x: 0.0, y: -0.3 },
         empty: { x: 0.3, y: -0.3 },
       };
 
-      // Move a tile if it is adjacent to the empty space
+      // Copy of the above object to track changes
+      let tilePositions = JSON.parse(JSON.stringify(initialPositions));
+
+      // Hook up click and hover events
+      Object.keys(tilePositions).forEach((tileId) => {
+        if (tileId !== "empty") {
+          const tile = document.getElementById(tileId);
+          tile.addEventListener("click", () => moveTile(tileId));
+
+          // Optional highlight on hover
+          tile.addEventListener("mouseenter", function () {
+            const canMove = isAdjacentToEmpty(tileId);
+            this.setAttribute("material", {
+              color: canMove ? "#88FF88" : "#FF8888",
+              opacity: 0.3,
+            });
+          });
+          tile.addEventListener("mouseleave", function () {
+            this.setAttribute("material", {
+              color: "#FFFFFF",
+              opacity: 1,
+            });
+          });
+        }
+      });
+
+      /* --------------------------------------
+         Movement + Checking for Win
+      -------------------------------------- */
+
+      // Check adjacency
+      function isAdjacentToEmpty(tileId) {
+        const emptyPos = tilePositions.empty;
+        const tilePos = tilePositions[tileId];
+        return (
+          (Math.abs(tilePos.x - emptyPos.x) === 0.3 &&
+            tilePos.y === emptyPos.y) ||
+          (Math.abs(tilePos.y - emptyPos.y) === 0.3 && tilePos.x === emptyPos.x)
+        );
+      }
+
+      // Move a tile
       function moveTile(tileId) {
-        const emptyTile = tilePositions.empty;
-        const clickedTile = tilePositions[tileId];
+        if (isAdjacentToEmpty(tileId)) {
+          const emptyPos = tilePositions.empty;
+          const tilePos = tilePositions[tileId];
+          const tile = document.getElementById(tileId);
+          const empty = document.getElementById("empty");
 
-        // Check adjacency
-        if (
-          (Math.abs(clickedTile.x - emptyTile.x) === 0.3 &&
-            clickedTile.y === emptyTile.y) ||
-          (Math.abs(clickedTile.y - emptyTile.y) === 0.3 &&
-            clickedTile.x === emptyTile.x)
-        ) {
-          // Swap positions in A-Frame
-          document.getElementById(tileId).setAttribute("position", {
-            x: emptyTile.x,
-            y: emptyTile.y,
-            z: 0,
+          // Animate the tile -> empty position
+          tile.setAttribute("animation", {
+            property: "position",
+            to: `${emptyPos.x} ${emptyPos.y} 0`,
+            dur: 200,
+            easing: "easeInOutQuad",
           });
-          document.getElementById("empty").setAttribute("position", {
-            x: clickedTile.x,
-            y: clickedTile.y,
-            z: 0,
+          // Animate the empty -> tile's old position
+          empty.setAttribute("animation", {
+            property: "position",
+            to: `${tilePos.x} ${tilePos.y} 0`,
+            dur: 200,
+            easing: "easeInOutQuad",
           });
 
-          // Update tilePositions
-          tilePositions.empty = { ...clickedTile };
-          tilePositions[tileId] = { ...emptyTile };
+          // Swap in tracking object
+          tilePositions.empty = { ...tilePos };
+          tilePositions[tileId] = { ...emptyPos };
+
+          checkWinCondition();
         }
       }
 
-      // Make one random valid move
-      function makeRandomMove() {
-        const emptyPos = tilePositions.empty;
-        const possibleMoves = [];
-
-        // Find tiles adjacent to the empty slot
-        Object.keys(tilePositions).forEach((id) => {
-          if (id === "empty") return;
-          const pos = tilePositions[id];
-          const isAdjacent =
-            (Math.abs(pos.x - emptyPos.x) === 0.3 && pos.y === emptyPos.y) ||
-            (Math.abs(pos.y - emptyPos.y) === 0.3 && pos.x === emptyPos.x);
-
-          if (isAdjacent) possibleMoves.push(id);
+      // Check if puzzle is solved
+      function checkWinCondition() {
+        const isSolved = Object.keys(tilePositions).every((id) => {
+          const curr = tilePositions[id];
+          const init = initialPositions[id];
+          return curr.x === init.x && curr.y === init.y;
         });
 
-        // Pick one at random
-        if (possibleMoves.length > 0) {
-          const randomTileId =
-            possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-          moveTile(randomTileId);
+        if (isSolved) {
+          setTimeout(
+            () => alert("Congratulations! You solved the puzzle!"),
+            300
+          );
         }
       }
 
-      // Shuffle puzzle by making N random valid moves
+      /* --------------------------------------
+         Improved Shuffle Logic
+      -------------------------------------- */
+
+      // Shuffle by making valid moves from the solved state.
+      // Avoid moving the same tile back & forth by skipping the last moved tile.
+      let lastMovedTile = null;
+
       function shufflePuzzle(movesCount = 20) {
         let moves = 0;
         const shuffleInterval = setInterval(() => {
-          makeRandomMove();
+          // Collect all tiles adjacent to the empty space, excluding the tile we just moved
+          const adjacentTiles = Object.keys(tilePositions).filter(
+            (id) =>
+              id !== "empty" && isAdjacentToEmpty(id) && id !== lastMovedTile
+          );
+
+          if (adjacentTiles.length === 0) {
+            // If there's no adjacent tile other than the one we just moved,
+            // let that tile move back (this is a fallback).
+            const fallbackTiles = Object.keys(tilePositions).filter(
+              (id) => id !== "empty" && isAdjacentToEmpty(id)
+            );
+            if (fallbackTiles.length > 0) {
+              const randomTile =
+                fallbackTiles[Math.floor(Math.random() * fallbackTiles.length)];
+              moveTile(randomTile);
+              lastMovedTile = randomTile;
+            }
+          } else {
+            // Move one of the adjacent tiles that isn't the last moved tile
+            const randomTile =
+              adjacentTiles[Math.floor(Math.random() * adjacentTiles.length)];
+            moveTile(randomTile);
+            lastMovedTile = randomTile;
+          }
+
           moves++;
           if (moves >= movesCount) {
             clearInterval(shuffleInterval);
+            lastMovedTile = null; // reset for next shuffle
           }
-        }, 100); // 100ms delay between random moves
+        }, 150);
       }
 
-      // Once the page loads, shuffle the puzzle
-      window.addEventListener("load", () => {
-        shufflePuzzle(20);
-      });
-
-      // Use A-Frame events to detect clicks on tiles with class="clickable"
-      document.querySelectorAll(".clickable").forEach((tileEl) => {
-        tileEl.addEventListener("click", (evt) => {
-          // evt.target.id is e.g. "tile1"
-          moveTile(evt.target.id);
-console.log("click");
+      // Reset puzzle to initial state
+      function resetPuzzle() {
+        Object.keys(initialPositions).forEach((tileId) => {
+          const pos = initialPositions[tileId];
+          document.getElementById(tileId).setAttribute("position", {
+            x: pos.x,
+            y: pos.y,
+            z: 0,
+          });
         });
+        tilePositions = JSON.parse(JSON.stringify(initialPositions));
+        lastMovedTile = null;
+      }
+
+      // Shuffle on load (optional)
+      window.addEventListener("load", () => {
+        setTimeout(() => shufflePuzzle(25), 1000);
       });
     </script>
   </body>
