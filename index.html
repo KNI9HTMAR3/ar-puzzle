@@ -163,7 +163,7 @@
           const tile = document.getElementById(tileId);
 
           // Primary click/tap
-          tile.addEventListener("click", () => moveTile(tileId));
+          tile.addEventListener("touchstart", () => moveTile(tileId));
 
           // Optional highlight on hover (works in some browsers)
           tile.addEventListener("mouseenter", function () {
