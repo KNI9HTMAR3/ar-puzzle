@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>AR Sliding Puzzle (Improved Shuffle)</title>
-    <!-- AR.js and A-Frame Dependencies -->
+    <title>AR Sliding Puzzle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -18,68 +18,47 @@
         border-radius: 5px;
         color: white;
         font-family: Arial, sans-serif;
+        touch-action: manipulation;
       }
 
       button {
         background: #4caf50;
         border: none;
         color: white;
-        padding: 10px 20px;
+        padding: 15px 30px;
         border-radius: 5px;
         cursor: pointer;
         margin: 0 5px;
+        font-size: 16px;
       }
 
       button:hover {
         background: #45a049;
       }
 
-      .ar-only {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1000;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        text-align: center;
-        font-family: Arial, sans-serif;
+      .a-enter-vr, 
+      .a-enter-ar {
         display: none;
       }
     </style>
   </head>
 
   <body style="margin: 0; overflow: hidden">
-    <!-- AR Instructions -->
-    <div class="ar-only" id="arInstructions">
-      Point your camera at a Hiro marker to see the puzzle
-    </div>
-
-    <!-- UI: Shuffle & Reset -->
     <div class="game-ui">
-      <button onclick="shufflePuzzle(25)">Shuffle Puzzle</button>
-      <button onclick="resetPuzzle()">Reset Puzzle</button>
+      <button onclick="shufflePuzzle(25)">Shuffle</button>
+      <button onclick="resetPuzzle()">Reset</button>
     </div>
 
-    <!-- A-Frame Scene with AR -->
     <a-scene
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      renderer="logarithmicDepthBuffer: true;"
+      vr-mode-ui="enabled: false"
       cursor="rayOrigin: mouse"
       raycaster="objects: .clickable"
-      vr-mode-ui="enabled: false"
     >
-      <!-- Marker and Puzzle Container -->
       <a-marker preset="hiro">
-        <!-- Puzzle positioned above marker -->
-        <a-entity
-          id="puzzle"
-          position="0 0.5 0"
-          rotation="-90 0 0"
-          scale="0.5 0.5 0.5"
-        >
+        <a-entity id="puzzle" position="0 0 0" scale="1 1 1">
           <a-plane
             id="tile1"
             src="./assets/puzzle-images/tile1.jpg"
@@ -144,7 +123,6 @@
             height="0.3"
             class="clickable"
           ></a-plane>
-          <!-- Empty Space -->
           <a-plane
             id="empty"
             material="color: #333333; opacity: 0.0"
@@ -155,25 +133,11 @@
         </a-entity>
       </a-marker>
 
-      <!-- Camera -->
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // Show AR instructions when scene loads
-      window.addEventListener("load", () => {
-        document.getElementById("arInstructions").style.display = "block";
-        // Hide instructions after 5 seconds
-        setTimeout(() => {
-          document.getElementById("arInstructions").style.display = "none";
-        }, 5000);
-      });
-
-      /* --------------------------------------
-         3x3 Sliding Puzzle Setup
-      -------------------------------------- */
-
-      // Correct/Initial positions
+      // Initial positions setup
       const initialPositions = {
         tile1: { x: -0.3, y: 0.3 },
         tile2: { x: 0.0, y: 0.3 },
@@ -186,37 +150,44 @@
         empty: { x: 0.3, y: -0.3 },
       };
 
-      // Copy of the above object to track changes
+      // Copy of positions for tracking
       let tilePositions = JSON.parse(JSON.stringify(initialPositions));
 
-      // Hook up click and hover events
-      Object.keys(tilePositions).forEach((tileId) => {
-        if (tileId !== "empty") {
-          const tile = document.getElementById(tileId);
-          tile.addEventListener("click", () => moveTile(tileId));
+      // Setup event listeners
+      document.addEventListener('DOMContentLoaded', function() {
+        Object.keys(tilePositions).forEach((tileId) => {
+          if (tileId !== "empty") {
+            const tile = document.getElementById(tileId);
+            
+            // Touch events for mobile
+            tile.addEventListener("touchstart", (e) => {
+              e.preventDefault();
+              moveTile(tileId);
+            });
 
-          // Optional highlight on hover
-          tile.addEventListener("mouseenter", function () {
-            const canMove = isAdjacentToEmpty(tileId);
-            this.setAttribute("material", {
-              color: canMove ? "#88FF88" : "#FF8888",
-              opacity: 0.3,
+            // Click events for desktop
+            tile.addEventListener("click", () => moveTile(tileId));
+
+            // Hover effects
+            tile.addEventListener("mouseenter", function () {
+              const canMove = isAdjacentToEmpty(tileId);
+              this.setAttribute("material", {
+                color: canMove ? "#88FF88" : "#FF8888",
+                opacity: 0.3,
+              });
             });
-          });
-          tile.addEventListener("mouseleave", function () {
-            this.setAttribute("material", {
-              color: "#FFFFFF",
-              opacity: 1,
+            
+            tile.addEventListener("mouseleave", function () {
+              this.setAttribute("material", {
+                color: "#FFFFFF",
+                opacity: 1,
+              });
             });
-          });
-        }
+          }
+        });
       });
 
-      /* --------------------------------------
-         Movement + Checking for Win
-      -------------------------------------- */
-
-      // Check adjacency
+      // Check if a tile is adjacent to empty space
       function isAdjacentToEmpty(tileId) {
         const emptyPos = tilePositions.empty;
         const tilePos = tilePositions[tileId];
@@ -227,7 +198,7 @@
         );
       }
 
-      // Move a tile
+      // Move tile function
       function moveTile(tileId) {
         if (isAdjacentToEmpty(tileId)) {
           const emptyPos = tilePositions.empty;
@@ -235,14 +206,15 @@
           const tile = document.getElementById(tileId);
           const empty = document.getElementById("empty");
 
-          // Animate the tile -> empty position
+          // Animate tile movement
           tile.setAttribute("animation", {
             property: "position",
             to: `${emptyPos.x} ${emptyPos.y} 0`,
             dur: 200,
             easing: "easeInOutQuad",
           });
-          // Animate the empty -> tile's old position
+
+          // Animate empty space
           empty.setAttribute("animation", {
             property: "position",
             to: `${tilePos.x} ${tilePos.y} 0`,
@@ -250,15 +222,16 @@
             easing: "easeInOutQuad",
           });
 
-          // Swap in tracking object
+          // Update positions
           tilePositions.empty = { ...tilePos };
           tilePositions[tileId] = { ...emptyPos };
 
+          // Check if puzzle is solved
           checkWinCondition();
         }
       }
 
-      // Check if puzzle is solved
+      // Win condition check
       function checkWinCondition() {
         const isSolved = Object.keys(tilePositions).every((id) => {
           const curr = tilePositions[id];
@@ -274,26 +247,19 @@
         }
       }
 
-      /* --------------------------------------
-         Improved Shuffle Logic
-      -------------------------------------- */
-
-      // Shuffle by making valid moves from the solved state.
-      // Avoid moving the same tile back & forth by skipping the last moved tile.
+      // Shuffle tracking
       let lastMovedTile = null;
 
+      // Shuffle function
       function shufflePuzzle(movesCount = 20) {
         let moves = 0;
         const shuffleInterval = setInterval(() => {
-          // Collect all tiles adjacent to the empty space, excluding the tile we just moved
           const adjacentTiles = Object.keys(tilePositions).filter(
             (id) =>
               id !== "empty" && isAdjacentToEmpty(id) && id !== lastMovedTile
           );
 
           if (adjacentTiles.length === 0) {
-            // If there's no adjacent tile other than the one we just moved,
-            // let that tile move back (this is a fallback).
             const fallbackTiles = Object.keys(tilePositions).filter(
               (id) => id !== "empty" && isAdjacentToEmpty(id)
             );
@@ -304,7 +270,6 @@
               lastMovedTile = randomTile;
             }
           } else {
-            // Move one of the adjacent tiles that isn't the last moved tile
             const randomTile =
               adjacentTiles[Math.floor(Math.random() * adjacentTiles.length)];
             moveTile(randomTile);
@@ -314,12 +279,12 @@
           moves++;
           if (moves >= movesCount) {
             clearInterval(shuffleInterval);
-            lastMovedTile = null; // reset for next shuffle
+            lastMovedTile = null;
           }
         }, 150);
       }
 
-      // Reset puzzle to initial state
+      // Reset function
       function resetPuzzle() {
         Object.keys(initialPositions).forEach((tileId) => {
           const pos = initialPositions[tileId];
@@ -333,7 +298,7 @@
         lastMovedTile = null;
       }
 
-      // Shuffle on load (optional)
+      // Auto-shuffle on load
       window.addEventListener("load", () => {
         setTimeout(() => shufflePuzzle(25), 1000);
       });
