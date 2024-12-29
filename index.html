@@ -15,7 +15,6 @@
         margin: 0;
         overflow: hidden;
       }
-      /* Simple button styling */
       #shuffleButton {
         position: absolute;
         top: 10px;
@@ -36,10 +35,17 @@
       arjs="sourceType: webcam; debugUIEnabled: false;"
       cursor="rayOrigin: mouse;"
     >
-      <!-- Marker-based AR (using 'hiro' preset for convenience) -->
+      <!-- Marker-based AR (using 'hiro' preset) -->
       <a-marker preset="hiro">
-        <!-- Our puzzle container entity -->
-        <a-entity id="puzzle-board" rotation="90 0 0"></a-entity>
+        <!-- 
+          Rotate the puzzle board 90 degrees around the X-axis 
+          so the puzzle faces the camera if marker is on a wall. 
+        -->
+        <a-entity
+          id="puzzle-board"
+          rotation="90 0 0"
+          position="0 0.15 0"
+        ></a-entity>
       </a-marker>
 
       <!-- AR.js requires a camera in the scene -->
@@ -99,8 +105,7 @@
           tileEl.setAttribute("width", TILE_SIZE);
           tileEl.setAttribute("height", TILE_SIZE);
 
-          // Give each tile a random color (for fun) and white text on top
-          // You can swap this with images or custom textures.
+          // Give each tile a random color and white text
           const randomColor =
             "#" + Math.floor(Math.random() * 16777215).toString(16);
           tileEl.setAttribute(
@@ -108,7 +113,6 @@
             `color: ${randomColor}; transparent: false;`
           );
 
-          // Add a text label on the tile
           tileEl.setAttribute(
             "text",
             `value: ${tileNumber}; color: #fff; align: center; width: 2;`
@@ -207,7 +211,6 @@
         const col = index % PUZZLE_SIZE;
 
         // Calculate offsets to center the puzzle around the marker
-        // e.g. for a 3×3 grid, total width ~ (3 * TILE_SIZE).
         const offset = (TILE_SIZE * (PUZZLE_SIZE - 1)) / 2;
 
         // x: moves left-to-right; y: moves top-to-bottom
